@@ -1,0 +1,16 @@
+// Rename the file to workflowmax-config.json and fill the values accordingly
+{
+  "clientUUID": "<your_client_uuid>",
+  "priority": "Normal",
+  "statusUUID": "",
+  "customFieldUUIDs": {
+    "bomEAN": "",
+    "signature": "",
+    "supplier": "",
+    "componentCode": "",
+    "componentEAN": ""
+  },
+  "client_id": "",
+  "client_secret": "",
+  "scope": "openid email profile workflowmax offline_access"
+}

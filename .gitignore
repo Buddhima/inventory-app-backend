@@ -2,7 +2,11 @@
 !jest.config.js
 *.d.ts
 node_modules
+layers/common/nodejs/node_modules
+.DS_Store
 
 # CDK asset staging directory
 .cdk.staging
 cdk.out
+
+configs/workflowmax-config.json
