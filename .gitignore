@@ -2,6 +2,15 @@
 !jest.config.js
 !lambda/**/*.js
 *.d.ts
+
+# TypeScript build output
+bin/**/*.js
+bin/**/*.d.ts
+lib/**/*.js
+lib/**/*.d.ts
+test/**/*.js
+test/**/*.d.ts
+
 node_modules
 layers/common/nodejs/node_modules
 .DS_Store
