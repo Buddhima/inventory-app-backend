@@ -3,6 +3,7 @@
 - Create a feature branch before making any change.
 - Before starting a new feature, switch to `master`, update it from `origin/master`, then create the feature branch from updated `master`.
 - Show the plan and get explicit permission before changing files.
+- Update `openapi.yaml` whenever an endpoint changes, including route or method additions, request or response schema changes, query parameters, authentication behavior, and error responses.
 - Ignore `.DS_Store` workflow noise unless explicitly asked to handle it.
 
 ## Project Context
