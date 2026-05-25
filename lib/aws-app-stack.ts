@@ -344,6 +344,20 @@ export class AwsAppStack extends cdk.Stack {
       }
     );
 
+    const inventoryMovementsHandler = new lambda.Function(
+      this,
+      "InventoryMovementsHandler",
+      {
+        runtime: lambda.Runtime.NODEJS_18_X,
+        code: lambda.Code.fromAsset("lambda/inventory-movements"),
+        handler: "index.handler",
+        layers: [commonLayer],
+        environment: {
+          TABLE_NAME: table.tableName,
+        },
+      }
+    );
+
     // Permissions
     table.grantReadWriteData(inventoryHandler);
     table.grantReadWriteData(stockHandler);
@@ -356,6 +370,7 @@ export class AwsAppStack extends cdk.Stack {
     table.grantReadWriteData(asnFileHandler);
     table.grantReadWriteData(asnFileHistoryHandler);
     table.grantReadWriteData(asnFileSignUrlHandler);
+    table.grantReadData(inventoryMovementsHandler);
 
     uploadBucket.grantReadWrite(invFileProcessorHandler);
     uploadBucket.grantPut(fileSignUrlHandler);
@@ -394,6 +409,7 @@ export class AwsAppStack extends cdk.Stack {
     const generateAsnFileUrl = api.root.addResource("generate-asn");
     const asnFileHistory = api.root.addResource("asn-file-history");
     const asnFileDownloadUrl = api.root.addResource("asn-file-download-url");
+    const inventoryMovements = api.root.addResource("inventory-movements");
 
     const inventoryIntegration = new apigateway.LambdaIntegration(inventoryHandler);
     const stockIntegration = new apigateway.LambdaIntegration(stockHandler);
@@ -411,6 +427,7 @@ export class AwsAppStack extends cdk.Stack {
     const asnFileIntegration = new apigateway.LambdaIntegration(asnFileHandler);
     const asnFileHistoryIntegration = new apigateway.LambdaIntegration(asnFileHistoryHandler);
     const asnFileDownloadIntegration = new apigateway.LambdaIntegration(asnFileSignUrlHandler);
+    const inventoryMovementsIntegration = new apigateway.LambdaIntegration(inventoryMovementsHandler);
 
     const authorizationOptions = {
       authorizationType: apigateway.AuthorizationType.COGNITO,
@@ -441,6 +458,7 @@ export class AwsAppStack extends cdk.Stack {
     generateAsnFileUrl.addMethod("POST", asnFileIntegration, authorizationOptions);
     asnFileHistory.addMethod("GET", asnFileHistoryIntegration, authorizationOptions);
     asnFileDownloadUrl.addMethod("GET", asnFileDownloadIntegration, authorizationOptions);
+    inventoryMovements.addMethod("GET", inventoryMovementsIntegration, authorizationOptions);
 
     // S3 Event Notification to trigger Lambda on file upload
 
