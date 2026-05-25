@@ -1,0 +1,654 @@
+openapi: 3.0.3
+info:
+  title: Inventory App Backend API
+  version: 0.1.0
+  description: REST API for inventory, job templates, WorkflowMax job creation, uploads, ASN files, and inventory movement history.
+servers:
+  - url: https://{apiId}.execute-api.{region}.amazonaws.com/{stage}
+    description: API Gateway deployment
+    variables:
+      apiId:
+        default: api-id
+      region:
+        default: us-east-1
+      stage:
+        default: prod
+security:
+  - cognitoBearerAuth: []
+tags:
+  - name: Inventory
+  - name: Stock
+  - name: Jobs
+  - name: Uploads
+  - name: ASN
+paths:
+  /inventory:
+    get:
+      tags:
+        - Inventory
+      summary: List current inventory balances
+      operationId: listInventory
+      responses:
+        "200":
+          description: Aggregated stock balances by item id.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/InventoryItem"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /stock:
+    post:
+      tags:
+        - Stock
+      summary: Add stock for an inventory item
+      operationId: addStock
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StockRequest"
+      responses:
+        "201":
+          description: Stock item accepted.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StockRequest"
+        "400":
+          $ref: "#/components/responses/UnsupportedMethod"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /consume:
+    post:
+      tags:
+        - Stock
+      summary: Consume stock for an inventory item
+      operationId: consumeStock
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ConsumeRequest"
+      responses:
+        "201":
+          description: Consumption item accepted.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConsumeRequest"
+        "400":
+          $ref: "#/components/responses/UnsupportedMethod"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /jobs:
+    post:
+      tags:
+        - Jobs
+      summary: Create a WorkflowMax job and consume stock for its components
+      operationId: createJob
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/JobRequest"
+      responses:
+        "201":
+          description: Job was created in WorkflowMax and recorded.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JobRequest"
+        "400":
+          $ref: "#/components/responses/UnsupportedMethod"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /job-templates:
+    get:
+      tags:
+        - Jobs
+      summary: List job templates or retrieve one template by sort key
+      operationId: listJobTemplates
+      parameters:
+        - name: sk
+          in: query
+          required: false
+          description: URL-encoded DynamoDB sort key for a specific job template.
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Job template metadata list, or a full job template when sk is supplied.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - type: array
+                    items:
+                      $ref: "#/components/schemas/JobTemplateSummary"
+                  - $ref: "#/components/schemas/JobTemplate"
+        "400":
+          $ref: "#/components/responses/UnsupportedMethod"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+    post:
+      tags:
+        - Jobs
+      summary: Create a job template
+      operationId: createJobTemplate
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/JobTemplateRequest"
+      responses:
+        "201":
+          description: Job template accepted.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JobTemplateRequest"
+        "400":
+          $ref: "#/components/responses/UnsupportedMethod"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /upload-url:
+    post:
+      tags:
+        - Uploads
+      summary: Create a signed S3 upload URL for an inventory file
+      operationId: createInventoryUploadUrl
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UploadUrlRequest"
+      responses:
+        "200":
+          description: Signed upload URL.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UploadUrlResponse"
+        "400":
+          $ref: "#/components/responses/UnsupportedMethod"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /job-template-upload-url:
+    post:
+      tags:
+        - Uploads
+      summary: Create a signed S3 upload URL for a job template file
+      operationId: createJobTemplateUploadUrl
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UploadUrlRequest"
+      responses:
+        "200":
+          description: Signed upload URL.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UploadUrlResponse"
+        "400":
+          $ref: "#/components/responses/UnsupportedMethod"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /job-history:
+    get:
+      tags:
+        - Jobs
+      summary: List WorkflowMax jobs created by this app
+      operationId: listJobHistory
+      responses:
+        "200":
+          description: Job history records ordered newest first.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/JobHistoryItem"
+        "400":
+          $ref: "#/components/responses/UnsupportedMethod"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /generate-asn:
+    post:
+      tags:
+        - ASN
+      summary: Generate an ASN file for a job
+      operationId: generateAsnFile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GenerateAsnRequest"
+      responses:
+        "200":
+          description: ASN file generated and uploaded.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FileUrlResponse"
+        "400":
+          description: Missing or invalid request data.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /asn-file-history:
+    get:
+      tags:
+        - ASN
+      summary: List generated ASN files
+      operationId: listAsnFileHistory
+      responses:
+        "200":
+          description: ASN file history ordered newest first.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AsnFileHistoryItem"
+        "400":
+          $ref: "#/components/responses/UnsupportedMethod"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /asn-file-download-url:
+    get:
+      tags:
+        - ASN
+      summary: Create a signed download URL for a generated ASN file
+      operationId: createAsnFileDownloadUrl
+      parameters:
+        - name: sk
+          in: query
+          required: true
+          description: URL-encoded DynamoDB sort key for the ASN file history record.
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Signed download URL.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FileUrlResponse"
+        "400":
+          description: Missing sk parameter or unsupported method.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+        "404":
+          description: ASN file not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /inventory-movements:
+    get:
+      tags:
+        - Inventory
+      summary: List inventory movement history
+      operationId: listInventoryMovements
+      parameters:
+        - name: id
+          in: query
+          required: false
+          description: Filter by item id.
+          schema:
+            type: string
+        - name: type
+          in: query
+          required: false
+          description: Filter by movement type.
+          schema:
+            type: string
+            enum:
+              - ADDED
+              - CONSUMED
+        - name: from
+          in: query
+          required: false
+          description: Inclusive lower bound as an epoch timestamp in milliseconds or a parseable date string.
+          schema:
+            oneOf:
+              - type: integer
+                format: int64
+              - type: string
+        - name: to
+          in: query
+          required: false
+          description: Inclusive upper bound as an epoch timestamp in milliseconds or a parseable date string.
+          schema:
+            oneOf:
+              - type: integer
+                format: int64
+              - type: string
+        - name: limit
+          in: query
+          required: false
+          description: Maximum number of movements to return.
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        "200":
+          description: Inventory movement records ordered newest first.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/InventoryMovement"
+        "400":
+          description: Invalid filter value or unsupported method.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+components:
+  securitySchemes:
+    cognitoBearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Cognito user pool JWT accepted by API Gateway.
+  responses:
+    UnsupportedMethod:
+      description: Unsupported HTTP method.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorMessage"
+    InternalServerError:
+      description: Server error.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorMessage"
+  schemas:
+    ErrorMessage:
+      description: The current Lambda handlers serialize errors as JSON strings.
+      type: string
+      example: Unsupported method
+    InventoryItem:
+      type: object
+      required:
+        - id
+        - quantity
+      properties:
+        id:
+          type: string
+          example: COMP-001
+        name:
+          type: string
+          nullable: true
+          example: Component 001
+        quantity:
+          type: number
+          example: 42
+      additionalProperties: true
+    StockRequest:
+      type: object
+      required:
+        - id
+        - quantity
+      properties:
+        id:
+          type: string
+          example: COMP-001
+        name:
+          type: string
+          example: Component 001
+        quantity:
+          type: number
+          example: 100
+      additionalProperties: true
+    ConsumeRequest:
+      type: object
+      required:
+        - id
+        - quantity
+      properties:
+        id:
+          type: string
+          example: COMP-001
+        name:
+          type: string
+          example: Component 001
+        quantity:
+          type: number
+          example: 5
+        jobNumber:
+          type: string
+          example: J000123
+      additionalProperties: true
+    Component:
+      type: object
+      required:
+        - componentCode
+        - componentQuantity
+      properties:
+        componentDescription:
+          type: string
+          nullable: true
+          example: Component description
+        componentEAN:
+          type: string
+          nullable: true
+          example: "9412345678901"
+        componentCode:
+          type: string
+          example: COMP-001
+        unitCost:
+          type: number
+          example: 12.5
+        stockQty:
+          type: number
+          example: 100
+        componentQuantity:
+          type: number
+          example: 5
+      additionalProperties: true
+    JobRequest:
+      type: object
+      required:
+        - bomHeader
+        - components
+      properties:
+        bomHeader:
+          type: string
+          example: BOM-001
+        supplier:
+          type: number
+          example: 126757
+        bomHeaderDescription:
+          type: string
+          nullable: true
+          example: Finished product
+        bomEAN:
+          type: string
+          example: "9412345678994"
+        signature:
+          type: string
+          nullable: true
+          example: ABC123
+        components:
+          type: array
+          items:
+            $ref: "#/components/schemas/Component"
+      additionalProperties: true
+    JobTemplateRequest:
+      allOf:
+        - $ref: "#/components/schemas/JobRequest"
+        - type: object
+          properties:
+            id:
+              type: string
+              example: BOM-001
+            description:
+              type: string
+              example: Finished product
+    JobTemplate:
+      allOf:
+        - $ref: "#/components/schemas/JobTemplateRequest"
+        - type: object
+          properties:
+            pk:
+              type: string
+              example: JOB_TEMPLATE
+            sk:
+              type: string
+              example: BOM-001#Finished product
+            createdAt:
+              type: integer
+              format: int64
+              example: 1766622900000
+    JobTemplateSummary:
+      type: object
+      properties:
+        bomHeader:
+          type: string
+          example: BOM-001
+        bomHeaderDescription:
+          type: string
+          example: Finished product
+        sk:
+          type: string
+          example: BOM-001#Finished product
+    UploadUrlRequest:
+      type: object
+      required:
+        - fileName
+        - contentType
+      properties:
+        fileName:
+          type: string
+          example: inventory.xlsx
+        contentType:
+          type: string
+          example: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+    UploadUrlResponse:
+      type: object
+      required:
+        - uploadUrl
+      properties:
+        uploadUrl:
+          type: string
+          format: uri
+    JobHistoryItem:
+      type: object
+      properties:
+        jobNumber:
+          type: string
+          example: J000123
+        jobName:
+          type: string
+          example: BOM-001 Finished product
+        jobUuid:
+          type: string
+          example: 00000000-0000-0000-0000-000000000000
+        createdAt:
+          type: integer
+          format: int64
+          example: 1766622900000
+        sk:
+          type: string
+          example: J000123
+    GenerateAsnRequest:
+      type: object
+      required:
+        - params
+      properties:
+        params:
+          type: object
+          required:
+            - sk
+          properties:
+            sk:
+              type: string
+              description: DynamoDB sort key for a JOB record.
+              example: J000123
+    FileUrlResponse:
+      type: object
+      required:
+        - fileName
+        - fileUrl
+      properties:
+        fileName:
+          type: string
+          example: ASN_BOM-001 Finished product_1766622900000.xlsx
+        fileUrl:
+          type: string
+          format: uri
+    AsnFileHistoryItem:
+      type: object
+      properties:
+        jobNumber:
+          type: string
+          example: J000123
+        jobName:
+          type: string
+          example: BOM-001 Finished product
+        fileName:
+          type: string
+          example: ASN_BOM-001 Finished product_1766622900000.xlsx
+        createdAt:
+          type: integer
+          format: int64
+          example: 1766622900000
+        sk:
+          type: string
+          example: J000123#1766622900000
+    InventoryMovement:
+      type: object
+      properties:
+        id:
+          type: string
+          example: COMP-001
+        name:
+          type: string
+          nullable: true
+          example: Component description
+        type:
+          type: string
+          enum:
+            - ADDED
+            - CONSUMED
+        quantity:
+          type: number
+          example: 5
+        createdAt:
+          type: integer
+          format: int64
+          example: 1766622900000
+        source:
+          type: string
+          enum:
+            - STOCK
+            - CONSUME
+        jobNumber:
+          type: string
+          nullable: true
+          example: J000123
