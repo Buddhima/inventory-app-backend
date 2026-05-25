@@ -19,6 +19,17 @@ export class AwsAppStack extends cdk.Stack {
       "configs/workflowmax-config.json",
       "utf8"
     );
+    const workflowMaxConfig = JSON.parse(configJson) as {
+      wfmAccountId?: string;
+    };
+    const wfmAccountId = workflowMaxConfig.wfmAccountId;
+
+    if (!wfmAccountId) {
+      throw new Error(
+        "Missing wfmAccountId in configs/workflowmax-config.json"
+      );
+    }
+
     const appConfigParameter = new ssm.StringParameter(
       this,
       "AppConfigParameter",
@@ -33,6 +44,13 @@ export class AwsAppStack extends cdk.Stack {
       this,
       "WfmConfigParam",
       "/inventory-app/wfm_token"
+    );
+
+    // SSCC Number postfix
+    const ssccPostfixParam = ssm.StringParameter.fromStringParameterName(
+      this,
+      "SsccPostfixParam",
+      "/inventory-app/sscc_number_postfix"
     );
 
     // Lambda Layer
@@ -61,6 +79,23 @@ export class AwsAppStack extends cdk.Stack {
     });
 
     const templateUploadBucket = new s3.Bucket(this, "TemplateUploadBucket", {
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+      autoDeleteObjects: true,
+      cors: [
+        {
+          allowedOrigins: ["*"],
+          allowedHeaders: ["*"],
+          allowedMethods: [
+            s3.HttpMethods.GET,
+            s3.HttpMethods.PUT,
+            s3.HttpMethods.POST,
+            s3.HttpMethods.DELETE,
+          ],
+        },
+      ],
+    });
+
+    const asnFileUploadBucket = new s3.Bucket(this, "AsnFileUploadBucket", {
       removalPolicy: cdk.RemovalPolicy.DESTROY,
       autoDeleteObjects: true,
       cors: [
@@ -181,7 +216,7 @@ export class AwsAppStack extends cdk.Stack {
         TABLE_NAME: table.tableName,
         APP_CONFIG_PARAM_NAME: appConfigParameter.parameterName,
         WFM_BASE_URL: "https://api.workflowmax.com/v2/",
-        WFM_ACCOUNT_ID: "<YOUR_WFM_ACCOUNT_ID>",
+        WFM_ACCOUNT_ID: wfmAccountId,
         WFM_CONFIG_PARAM_NAME: wfmConfigParam.parameterName,
       },
       memorySize: 5120,
@@ -266,6 +301,49 @@ export class AwsAppStack extends cdk.Stack {
       },
     });
 
+    const asnFileHandler = new lambda.Function(this, "AsnFileHandler", {
+      runtime: lambda.Runtime.NODEJS_18_X,
+      code: lambda.Code.fromAsset("lambda/asn-file-processor"),
+      handler: "index.handler",
+      layers: [commonLayer],
+      environment: {
+        TABLE_NAME: table.tableName,
+        BUCKET_NAME: asnFileUploadBucket.bucketName,
+        APP_CONFIG_PARAM_NAME: appConfigParameter.parameterName,
+        WFM_BASE_URL: "https://api.workflowmax.com/v2/",
+        WFM_ACCOUNT_ID: wfmAccountId,
+        WFM_CONFIG_PARAM_NAME: wfmConfigParam.parameterName,
+        SSCC_POSTFIX_PARAM_NAME: ssccPostfixParam.parameterName,
+      },
+      memorySize: 5120,
+      timeout: cdk.Duration.minutes(5),
+    });
+
+    const asnFileHistoryHandler = new lambda.Function(this, "AsnFileHistoryHandler", {
+      runtime: lambda.Runtime.NODEJS_18_X,
+      code: lambda.Code.fromAsset("lambda/asn-file-history"),
+      handler: "index.handler",
+      layers: [commonLayer],
+      environment: {
+        TABLE_NAME: table.tableName,
+      },
+    });
+
+    const asnFileSignUrlHandler = new lambda.Function(
+      this,
+      "AsnFileSignUrlHandler",
+      {
+        runtime: lambda.Runtime.NODEJS_18_X,
+        code: lambda.Code.fromAsset("lambda/asn-file-sign-url"),
+        handler: "index.handler",
+        layers: [commonLayer],
+        environment: {
+          TABLE_NAME: table.tableName,
+          BUCKET_NAME: asnFileUploadBucket.bucketName,
+        },
+      }
+    );
+
     // Permissions
     table.grantReadWriteData(inventoryHandler);
     table.grantReadWriteData(stockHandler);
@@ -275,6 +353,9 @@ export class AwsAppStack extends cdk.Stack {
     table.grantReadWriteData(invFileProcessorHandler);
     table.grantReadWriteData(templateFileProcessorHandler);
     table.grantReadWriteData(jobHistoryHandler);
+    table.grantReadWriteData(asnFileHandler);
+    table.grantReadWriteData(asnFileHistoryHandler);
+    table.grantReadWriteData(asnFileSignUrlHandler);
 
     uploadBucket.grantReadWrite(invFileProcessorHandler);
     uploadBucket.grantPut(fileSignUrlHandler);
@@ -282,8 +363,16 @@ export class AwsAppStack extends cdk.Stack {
     templateUploadBucket.grantReadWrite(templateFileProcessorHandler);
     templateUploadBucket.grantPut(templateFileSignUrlHandler);
 
+    asnFileUploadBucket.grantReadWrite(asnFileHandler);
+    asnFileUploadBucket.grantPut(asnFileHandler);
+    asnFileUploadBucket.grantReadWrite(asnFileSignUrlHandler);
+
     appConfigParameter.grantRead(jobHandler);
     wfmConfigParam.grantRead(jobHandler);
+    appConfigParameter.grantRead(asnFileHandler);
+    wfmConfigParam.grantRead(asnFileHandler);
+    ssccPostfixParam.grantRead(asnFileHandler);
+    ssccPostfixParam.grantWrite(asnFileHandler);
 
     // API Gateway
     const api = new apigateway.RestApi(this, "ItemsApi", {
@@ -302,6 +391,9 @@ export class AwsAppStack extends cdk.Stack {
     const uploadFile = api.root.addResource("upload-url");
     const uploadTemplateFile = api.root.addResource("job-template-upload-url");
     const jobHistory = api.root.addResource("job-history");
+    const generateAsnFileUrl = api.root.addResource("generate-asn");
+    const asnFileHistory = api.root.addResource("asn-file-history");
+    const asnFileDownloadUrl = api.root.addResource("asn-file-download-url");
 
     const inventoryIntegration = new apigateway.LambdaIntegration(inventoryHandler);
     const stockIntegration = new apigateway.LambdaIntegration(stockHandler);
@@ -316,6 +408,9 @@ export class AwsAppStack extends cdk.Stack {
     const jobHistoryIntegration = new apigateway.LambdaIntegration(
       jobHistoryHandler
     );
+    const asnFileIntegration = new apigateway.LambdaIntegration(asnFileHandler);
+    const asnFileHistoryIntegration = new apigateway.LambdaIntegration(asnFileHistoryHandler);
+    const asnFileDownloadIntegration = new apigateway.LambdaIntegration(asnFileSignUrlHandler);
 
     const authorizationOptions = {
       authorizationType: apigateway.AuthorizationType.COGNITO,
@@ -343,16 +438,19 @@ export class AwsAppStack extends cdk.Stack {
       authorizationOptions
     );
     jobHistory.addMethod("GET", jobHistoryIntegration, authorizationOptions);
+    generateAsnFileUrl.addMethod("POST", asnFileIntegration, authorizationOptions);
+    asnFileHistory.addMethod("GET", asnFileHistoryIntegration, authorizationOptions);
+    asnFileDownloadUrl.addMethod("GET", asnFileDownloadIntegration, authorizationOptions);
 
     // S3 Event Notification to trigger Lambda on file upload
 
     uploadBucket.addEventNotification(
       s3.EventType.OBJECT_CREATED,
-      new s3n.LambdaDestination(invFileProcessorHandler)
+      new s3n.LambdaDestination(invFileProcessorHandler),
     );
     templateUploadBucket.addEventNotification(
       s3.EventType.OBJECT_CREATED,
-      new s3n.LambdaDestination(templateFileProcessorHandler)
+      new s3n.LambdaDestination(templateFileProcessorHandler),
     );
   }
 }
