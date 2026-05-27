@@ -1,4 +1,5 @@
 const AWS = require("aws-sdk");
+const { getUserName } = require("/opt/nodejs/userContext");
 const dynamo = new AWS.DynamoDB.DocumentClient();
 const TABLE_NAME = process.env.TABLE_NAME;
 
@@ -50,6 +51,7 @@ const listItems = async () => {
     fileName: item.fileName,
     createdAt: item.createdAt,
     sk: item.sk,
+    performedByName: getUserName(item.performedBy),
   }));
 
   return response(200, itemMeta);

@@ -1,4 +1,5 @@
 const AWS = require("aws-sdk");
+const { getUserContext } = require("/opt/nodejs/userContext");
 const dynamo = new AWS.DynamoDB.DocumentClient();
 const TABLE_NAME = process.env.TABLE_NAME;
 const { createJob, createJobCosts } = require("./services/workflowmaxApi");
@@ -15,7 +16,7 @@ exports.handler = async (event) => {
   try {
     switch (method) {
       case "POST":
-        return await createItem(body);
+        return await createItem(body, getUserContext(event));
 
       default:
         return response(400, "Unsupported method");
@@ -26,7 +27,7 @@ exports.handler = async (event) => {
   }
 };
 
-const createItem = async (item) => {
+const createItem = async (item, performedBy) => {
   // 1. Call endppoint to create job
   const job = Job.fromRequest(item);
   console.log("Job Model:", JSON.stringify(job));
@@ -140,6 +141,7 @@ const createItem = async (item) => {
     jobName: jobName,
     jobUuid: jobUuid,
     status: "CREATED",
+    ...(performedBy ? { performedBy } : {}),
     createdAt: timeStamp,
   };
   console.log("Storing job item:", JSON.stringify(data));
@@ -165,6 +167,7 @@ const createItem = async (item) => {
       id: costItem.componentCode,
       quantity: costItem.componentQuantity,
       jobNumber: jobNumber,
+      ...(performedBy ? { performedBy } : {}),
       createdAt: timeStamp,
     };
     await dynamo

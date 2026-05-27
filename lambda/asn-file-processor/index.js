@@ -1,4 +1,5 @@
 const AWS = require("aws-sdk");
+const { getUserContext } = require("/opt/nodejs/userContext");
 const dynamo = new AWS.DynamoDB.DocumentClient();
 const TABLE_NAME = process.env.TABLE_NAME;
 const XLSX = require("xlsx");
@@ -25,7 +26,7 @@ exports.handler = async (event) => {
     switch (method) {
       case "POST":
         console.log("Generating ASN file");
-        return await generateAsnFile(body);
+        return await generateAsnFile(body, getUserContext(event));
 
       default:
         return response(400, "Unsupported method");
@@ -40,7 +41,7 @@ exports.handler = async (event) => {
   }
 };
 
-const generateAsnFile = async (body) => {
+const generateAsnFile = async (body, performedBy) => {
   console.log("Received body:", body);
 
   const validationError = validateGenerateAsnRequest(body);
@@ -97,6 +98,7 @@ const generateAsnFile = async (body) => {
       fileName,
       fileKey,
       createdAt: timeStamp,
+      ...(performedBy ? { performedBy } : {}),
       requestPayload: body,
     };
     await dynamo

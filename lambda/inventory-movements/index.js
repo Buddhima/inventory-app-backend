@@ -1,4 +1,5 @@
 const AWS = require("aws-sdk");
+const { getUserName } = require("/opt/nodejs/userContext");
 const dynamo = new AWS.DynamoDB.DocumentClient();
 const TABLE_NAME = process.env.TABLE_NAME;
 
@@ -78,6 +79,7 @@ const toMovement = (item) => {
     createdAt: item.createdAt,
     source: item.pk,
     jobNumber: item.jobNumber,
+    performedByName: getUserName(item.performedBy),
   };
 };
 
