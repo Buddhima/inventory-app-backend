@@ -685,11 +685,6 @@ components:
           type: string
           description: Optional means of transport ID. May be blank.
           example: ""
-        numberOfLines:
-          type: integer
-          minimum: 1
-          description: Optional client-provided line count. ASN generation derives rows from the lines array.
-          example: 2
         lines:
           type: array
           minItems: 1
@@ -708,7 +703,6 @@ components:
         manufacturingDate: "2026-03-31"
         packId: PAL_23
         batchComponents: DUMMY
-        numberOfLines: 2
         lines:
           - batchNumber: 7MA11W
             quantity: 150
@@ -732,122 +726,10 @@ components:
           minimum: 0
           exclusiveMinimum: true
           example: 150
-        plant:
-          type: string
-          description: Optional plant override for this line.
-          example: FLKA
-        purchasingDoc:
-          type: string
-          description: Optional purchasing document override for this line. May be blank.
-          example: ""
-        poItem:
-          type: string
-          description: Optional PO item override for this line.
-          example: "00010"
-        supplier:
-          type: string
-          description: Optional supplier override for this line.
-          example: "10058487"
-        deliveryQty:
-          type: number
-          description: Optional delivery quantity override. Defaults to quantity.
-          example: 150
-        deliveryQtyUnit:
-          type: string
-          description: Optional delivery quantity unit override.
-          example: PC
-        deliveryNote:
-          type: string
-          description: Optional delivery note override.
-          example: production
-        deliveryDate:
-          type: string
-          description: Optional delivery date override.
-          example: "2026-06-01"
-        shippingDate:
-          type: string
-          description: Optional shipping date override.
-          example: "2026-05-30"
-        billOfLading:
-          type: string
-          description: Optional bill of lading. May be blank.
-          example: ""
-        storageLocation:
-          type: string
-          description: Optional storage location override.
-          example: SL01
-        issuingStorageLocation:
-          type: string
-          description: Optional issuing storage location. May be blank.
-          example: ""
-        batch:
-          type: string
-          description: Optional batch value. Defaults to batchNumber.
-          example: 48Z802
-        supplierBatch:
-          type: string
-          description: Optional supplier batch. May be blank.
-          example: ""
-        batchQty:
-          type: number
-          description: Optional batch quantity. Defaults to quantity.
-          example: 150
-        sled:
-          type: string
-          description: Optional SLED value. May be blank.
-          example: ""
-        manufacturingDate:
-          type: string
-          description: Optional manufacturing date override.
-          example: "2026-03-31"
-        ssccNumber:
-          type: string
-          description: Optional SSCC override. Generated when omitted.
-          example: "126757290420266391"
-        ssccQty:
-          type: number
-          description: Optional SSCC quantity. Defaults to quantity.
-          example: 150
-        packId:
-          type: string
-          description: Optional pack id override.
-          example: PAL_23
         components:
           type: string
           description: Component material code.
           example: P1864000
-        component:
-          type: string
-          description: Optional alias for components.
-          example: P1864000
-        componentsQty:
-          type: number
-          description: Optional components quantity. Defaults to quantity.
-          example: 150
-        componentQty:
-          type: number
-          description: Optional alias for componentsQty.
-          example: 150
-        qtyUnit:
-          type: string
-          description: Optional quantity unit. Defaults to deliveryQtyUnit.
-          example: PC
-        batchComponents:
-          type: string
-          description: Optional batch components value.
-          example: DUMMY
-        returnComponents:
-          type: string
-          description: Optional return components value. May be blank.
-          example: ""
-        meansOfTransportType:
-          type: string
-          description: Optional means-of-transport type. May be blank.
-          example: ""
-        meansOfTransportId:
-          type: string
-          description: Optional means of transport ID. May be blank.
-          example: ""
     FileUrlResponse:
       type: object
       required:
