@@ -220,44 +220,17 @@ const generateAsnFileContent = async (payload, jobItem) => {
     meansOfTransportId: payload.meansOfTransportId || "",
   };
 
-  const records = payload.lines.map((line, index) => {
-    const ssccNumber =
-      line.ssccNumber ||
-      `${payload.supplier}${day}${month}${year}${String(ssccPostfix)}`;
+  const records = payload.lines.map((line) => {
+    const ssccNumber = `${payload.supplier}${day}${month}${year}${String(ssccPostfix)}`;
     const record = {
       ...defaultRecord,
-      plant: line.plant || defaultRecord.plant,
-      purchasingDoc: line.purchasingDoc || defaultRecord.purchasingDoc,
-      poItem: line.poItem || defaultRecord.poItem,
-      material: defaultRecord.material,
-      supplier: line.supplier || defaultRecord.supplier,
-      deliveryQty: line.deliveryQty ?? line.quantity,
-      deliveryQtyUnit: line.deliveryQtyUnit || defaultRecord.deliveryQtyUnit,
-      deliveryNote: line.deliveryNote || defaultRecord.deliveryNote,
-      deliveryDate: line.deliveryDate || defaultRecord.deliveryDate,
-      shippingDate: line.shippingDate || defaultRecord.shippingDate,
-      billOfLading: line.billOfLading || defaultRecord.billOfLading,
-      storageLocation: line.storageLocation || defaultRecord.storageLocation,
-      issuingStorageLocation:
-        line.issuingStorageLocation || defaultRecord.issuingStorageLocation,
-      batch: line.batch || line.batchNumber,
-      supplierBatch: line.supplierBatch || defaultRecord.supplierBatch,
-      batchQty: line.batchQty ?? line.quantity,
-      sled: line.sled || defaultRecord.sled,
-      manufacturingDate:
-        line.manufacturingDate || defaultRecord.manufacturingDate,
+      deliveryQty: line.quantity,
+      batch: line.batchNumber,
+      batchQty: line.quantity,
       ssccNumber,
-      ssccQty: line.ssccQty ?? line.quantity,
-      packId: line.packId || defaultRecord.packId,
-      components: line.components || line.component || "",
-      componentsQty: line.componentsQty ?? line.componentQty ?? line.quantity,
-      qtyUnit: line.qtyUnit || defaultRecord.qtyUnit,
-      batchComponents: line.batchComponents || defaultRecord.batchComponents,
-      returnComponents: line.returnComponents || defaultRecord.returnComponents,
-      meansOfTransportType:
-        line.meansOfTransportType || defaultRecord.meansOfTransportType,
-      meansOfTransportId:
-        line.meansOfTransportId || defaultRecord.meansOfTransportId,
+      ssccQty: line.quantity,
+      components: line.components,
+      componentsQty: line.quantity,
     };
 
     ssccPostfix++;
