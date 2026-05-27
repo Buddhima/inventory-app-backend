@@ -112,12 +112,19 @@ const validateGenerateAsnRequest = (body) => {
 
   const requiredFields = [
     "jobNumber",
-    "purchasingDoc",
+    "plant",
     "poItem",
+    "material",
     "supplier",
     "deliveryQtyUnit",
+    "deliveryNote",
     "deliveryDate",
     "shippingDate",
+    "storageLocation",
+    "manufacturingDate",
+    "packId",
+    "qtyUnit",
+    "batchComponents",
     "lines",
   ];
 
@@ -142,6 +149,10 @@ const validateGenerateAsnRequest = (body) => {
 
     if (!line.batchNumber) {
       return `Missing required field: lines[${index}].batchNumber`;
+    }
+
+    if (!line.components) {
+      return `Missing required field: lines[${index}].components`;
     }
 
     if (
@@ -179,30 +190,67 @@ const generateAsnFileContent = async (payload, jobItem) => {
   const { year, month, day } = await getTodayParts();
 
   const defaultRecord = {
-    purchasingOrg: "N001",
-    vendor: payload.supplier,
-    plant: "N001",
-    companyCode: "N001",
-    sapMaterialCode: payload.sapMaterialCode || jobItem?.bomHeader || "",
-    deliveryQtyUnit: payload.deliveryQtyUnit,
-    vendorMaterialCode: payload.vendorMaterialCode || jobItem?.bomHeader || "",
-    materialCodeDescription:
-      payload.materialCodeDescription || jobItem?.bomHeaderDescription || "",
-    shipmentNumber: "",
-    shipmentDate: payload.shippingDate,
-    deliveryDate: payload.deliveryDate,
-    poNumber: payload.purchasingDoc,
+    plant: payload.plant,
+    purchasingDoc: payload.purchasingDoc || "",
     poItem: payload.poItem,
+    material: payload.material,
+    supplier: payload.supplier,
+    deliveryQtyUnit: payload.deliveryQtyUnit,
+    deliveryNote: payload.deliveryNote || "",
+    deliveryDate: payload.deliveryDate,
+    shippingDate: payload.shippingDate,
+    billOfLading: payload.billOfLading || "",
+    storageLocation: payload.storageLocation,
+    issuingStorageLocation: payload.issuingStorageLocation || "",
+    supplierBatch: payload.supplierBatch || "",
+    sled: payload.sled || "",
+    manufacturingDate: payload.manufacturingDate,
+    packId: payload.packId,
+    qtyUnit: payload.qtyUnit,
+    batchComponents: payload.batchComponents,
+    returnComponents: payload.returnComponents || "",
+    meansOfTransportType: payload.meansOfTransportType || "",
+    meansOfTransportId: payload.meansOfTransportId || "",
   };
 
   const records = payload.lines.map((line, index) => {
+    const ssccNumber =
+      line.ssccNumber ||
+      `${payload.supplier}${day}${month}${year}${String(ssccPostfix)}`;
     const record = {
       ...defaultRecord,
-      ...line,
-      batchNumber: line.batchNumber,
-      quantity: line.quantity,
-      manualPallet: index + 1,
-      ssccNumber: `${payload.supplier}${day}${month}${year}${String(ssccPostfix)}`,
+      plant: line.plant || defaultRecord.plant,
+      purchasingDoc: line.purchasingDoc || defaultRecord.purchasingDoc,
+      poItem: line.poItem || defaultRecord.poItem,
+      material: line.material || defaultRecord.material,
+      supplier: line.supplier || defaultRecord.supplier,
+      deliveryQty: line.deliveryQty ?? line.quantity,
+      deliveryQtyUnit: line.deliveryQtyUnit || defaultRecord.deliveryQtyUnit,
+      deliveryNote: line.deliveryNote || defaultRecord.deliveryNote,
+      deliveryDate: line.deliveryDate || defaultRecord.deliveryDate,
+      shippingDate: line.shippingDate || defaultRecord.shippingDate,
+      billOfLading: line.billOfLading || defaultRecord.billOfLading,
+      storageLocation: line.storageLocation || defaultRecord.storageLocation,
+      issuingStorageLocation:
+        line.issuingStorageLocation || defaultRecord.issuingStorageLocation,
+      batch: line.batch || line.batchNumber,
+      supplierBatch: line.supplierBatch || defaultRecord.supplierBatch,
+      batchQty: line.batchQty ?? line.quantity,
+      sled: line.sled || defaultRecord.sled,
+      manufacturingDate:
+        line.manufacturingDate || defaultRecord.manufacturingDate,
+      ssccNumber,
+      ssccQty: line.ssccQty ?? line.quantity,
+      packId: line.packId || defaultRecord.packId,
+      components: line.components || line.component || "",
+      componentsQty: line.componentsQty ?? line.componentQty ?? line.quantity,
+      qtyUnit: line.qtyUnit || defaultRecord.qtyUnit,
+      batchComponents: line.batchComponents || defaultRecord.batchComponents,
+      returnComponents: line.returnComponents || defaultRecord.returnComponents,
+      meansOfTransportType:
+        line.meansOfTransportType || defaultRecord.meansOfTransportType,
+      meansOfTransportId:
+        line.meansOfTransportId || defaultRecord.meansOfTransportId,
     };
 
     ssccPostfix++;
@@ -213,52 +261,80 @@ const generateAsnFileContent = async (payload, jobItem) => {
 
   try {
     const fieldOrder = [
-      "purchasingOrg",
-      "vendor",
       "plant",
-      "companyCode",
-      "sapMaterialCode",
-      "quantity",
-      "deliveryQtyUnit",
-      "manualPallet",
-      "ssccNumber",
-      "vendorMaterialCode",
-      "materialCodeDescription",
-      "shipmentNumber",
-      "shipmentDate",
-      "deliveryDate",
-      "poNumber",
+      "purchasingDoc",
       "poItem",
-      "batchNumber",
+      "material",
+      "supplier",
+      "deliveryQty",
+      "deliveryQtyUnit",
+      "deliveryNote",
+      "deliveryDate",
+      "shippingDate",
+      "billOfLading",
+      "storageLocation",
+      "issuingStorageLocation",
+      "batch",
+      "supplierBatch",
+      "batchQty",
+      "sled",
+      "manufacturingDate",
+      "ssccNumber",
+      "ssccQty",
+      "packId",
+      "components",
+      "componentsQty",
+      "qtyUnit",
+      "batchComponents",
+      "returnComponents",
+      "meansOfTransportType",
+      "meansOfTransportId",
     ];
 
-    const worksheet = XLSX.utils.json_to_sheet(records, { header: fieldOrder });
+    const worksheet = XLSX.utils.json_to_sheet(records, {
+      header: fieldOrder,
+    });
 
     const customHeaders = [
       [
-        "Purchasing Org",
-        "Vendor",
         "Plant",
-        "Company Code",
-        "SAP Material Code",
-        "Quantity",
-        "Delivery Quantity Unit",
-        "Manual pallet",
-        "SSCC Number",
-        "Vendor Material Code",
-        "Material Code Description",
-        "Shipment #",
-        "Shipment Date",
-        "Delivery Date",
-        "PO Number",
-        "PO Item",
-        "Batch Number",
+        "Purchasing doc",
+        "PO item",
+        "Material",
+        "Supplier",
+        "Delivery qty",
+        "Delivery qty unit",
+        "Delivery note",
+        "Delivery date",
+        "Shipping date",
+        "Bill of lading",
+        "Storage Location",
+        "Issuing Storage Location",
+        "Batch",
+        "Supplier Batch",
+        "Batch Qty",
+        "SLED ",
+        "Manufactring date",
+        "SSCC",
+        "SSCC Qty",
+        "Pack id",
+        "Components",
+        "Components qty",
+        "Qty unit",
+        "Batch Components",
+        "Return Components",
+        "Means-of-Transport Type",
+        "Means of Transport ID",
       ],
     ];
 
     XLSX.utils.sheet_add_aoa(worksheet, customHeaders, { origin: "A1" });
     const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet);
+    XLSX.utils.book_append_sheet(
+      workbook,
+      worksheet,
+      "Production Declaration ASN",
+    );
 
     // Return as buffer (not file)
     return XLSX.write(workbook, { type: "buffer", bookType: "xlsx" });
