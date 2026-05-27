@@ -590,7 +590,6 @@ components:
         - plant
         - poItem
         - supplier
-        - deliveryQtyUnit
         - deliveryNote
         - deliveryDate
         - shippingDate
@@ -621,10 +620,6 @@ components:
           type: string
           description: Supplier or vendor number.
           example: "126757"
-        deliveryQtyUnit:
-          type: string
-          description: Unit of measure for delivered quantities.
-          example: PC
         deliveryNote:
           type: string
           description: Delivery note.
@@ -695,7 +690,7 @@ components:
         poItem: "00010"
         supplier: "126757"
         plant: FLKA
-        deliveryQtyUnit: PC
+        qtyUnit: PC
         deliveryNote: production
         deliveryDate: "2026-06-01"
         shippingDate: "2026-05-30"
