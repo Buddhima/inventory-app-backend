@@ -1,4 +1,5 @@
 const AWS = require("aws-sdk");
+const { getUserContext } = require("/opt/nodejs/userContext");
 const dynamo = new AWS.DynamoDB.DocumentClient();
 const TABLE_NAME = process.env.TABLE_NAME;
 
@@ -10,7 +11,7 @@ exports.handler = async (event) => {
   try {
     switch (method) {
       case "POST":
-        return await createItem(body);
+        return await createItem(body, getUserContext(event));
 
       default:
         return response(400, "Unsupported method");
@@ -21,12 +22,13 @@ exports.handler = async (event) => {
   }
 };
 
-const createItem = async (item) => {
+const createItem = async (item, performedBy) => {
   const timeStamp = Date.now();
   const data = {
     pk: `STOCK`,
     sk: `${item.id}#${timeStamp}`,
     ...item, // only final quantity should be stored here
+    ...(performedBy ? { performedBy } : {}),
     createdAt: timeStamp,
   };
   await dynamo
@@ -41,6 +43,7 @@ const createItem = async (item) => {
     pk: `ITEM_METADATA`,
     sk: `${item.id}`,
     ...item,
+    ...(performedBy ? { updatedBy: performedBy } : {}),
   };
   await dynamo
     .put({

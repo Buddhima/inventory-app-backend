@@ -1,6 +1,7 @@
 *.js
 !jest.config.js
 !lambda/**/*.js
+!layers/common/nodejs/userContext.js
 *.d.ts
 
 # TypeScript build output

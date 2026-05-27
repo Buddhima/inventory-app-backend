@@ -582,6 +582,10 @@ components:
         sk:
           type: string
           example: J000123
+        performedByName:
+          type: string
+          nullable: true
+          example: Jane Smith
     GenerateAsnRequest:
       type: object
       additionalProperties: true
@@ -756,6 +760,10 @@ components:
         sk:
           type: string
           example: J000123#1766622900000
+        performedByName:
+          type: string
+          nullable: true
+          example: Jane Smith
     InventoryMovement:
       type: object
       properties:
@@ -787,3 +795,7 @@ components:
           type: string
           nullable: true
           example: J000123
+        performedByName:
+          type: string
+          nullable: true
+          example: Jane Smith
