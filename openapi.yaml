@@ -578,18 +578,84 @@ components:
           example: J000123
     GenerateAsnRequest:
       type: object
+      additionalProperties: true
       required:
-        - params
+        - jobNumber
+        - purchasingDoc
+        - poItem
+        - supplier
+        - deliveryQtyUnit
+        - deliveryDate
+        - shippingDate
+        - lines
       properties:
-        params:
-          type: object
-          required:
-            - sk
-          properties:
-            sk:
-              type: string
-              description: DynamoDB sort key for a JOB record.
-              example: J000123
+        jobNumber:
+          type: string
+          description: Job number used to identify the ASN generation request.
+          example: J000123
+        purchasingDoc:
+          type: string
+          description: Purchasing document or PO number.
+          example: "4500001234"
+        poItem:
+          type: string
+          description: Purchase order line item.
+          example: "00010"
+        supplier:
+          type: string
+          description: Supplier or vendor number.
+          example: "126757"
+        deliveryQtyUnit:
+          type: string
+          description: Unit of measure for delivered quantities.
+          example: EA
+        deliveryDate:
+          type: string
+          format: date
+          example: "2026-06-01"
+        shippingDate:
+          type: string
+          format: date
+          example: "2026-05-30"
+        numberOfLines:
+          type: integer
+          minimum: 1
+          description: Optional client-provided line count. ASN generation derives rows from the lines array.
+          example: 2
+        lines:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/GenerateAsnLine"
+      example:
+        jobNumber: J000123
+        purchasingDoc: "4500001234"
+        poItem: "00010"
+        supplier: "126757"
+        deliveryQtyUnit: EA
+        deliveryDate: "2026-06-01"
+        shippingDate: "2026-05-30"
+        numberOfLines: 2
+        lines:
+          - batchNumber: 7MA11W
+            quantity: 150
+          - batchNumber: 7MA12W
+            quantity: 75
+    GenerateAsnLine:
+      type: object
+      additionalProperties: true
+      required:
+        - batchNumber
+        - quantity
+      properties:
+        batchNumber:
+          type: string
+          example: 7MA11W
+        quantity:
+          type: number
+          minimum: 0
+          exclusiveMinimum: true
+          example: 150
     FileUrlResponse:
       type: object
       required:

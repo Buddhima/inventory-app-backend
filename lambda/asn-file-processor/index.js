@@ -9,26 +9,19 @@ const {
 } = require("@aws-sdk/client-s3");
 const { getSignedUrl } = require("@aws-sdk/s3-request-presigner");
 
-const { getJobDetails, getJobCosts } = require("./services/workflowmaxApi");
 const {
   getSsccPostfix,
   setSsccPostfix,
 } = require("./services/ssccNumberHandler");
 
 const s3 = new S3Client({});
-const PALLET_QUANTITY = 150; // Example: 10 units per pallet
 
 exports.handler = async (event) => {
   const method = event.httpMethod;
-  const encodedSk = event.queryStringParameters?.sk;
-  const sk = encodedSk ? decodeURIComponent(encodedSk) : null;
-  // const id = event.queryStringParameters?.id;
-  // const timestamp = event.queryStringParameters?.timestamp;
-  const body = event.body ? JSON.parse(event.body) : null;
-
-  console.log(`sk: ${sk}`);
 
   try {
+    const body = event.body ? JSON.parse(event.body) : null;
+
     switch (method) {
       case "POST":
         console.log("Generating ASN file");
@@ -39,6 +32,10 @@ exports.handler = async (event) => {
     }
   } catch (err) {
     console.error(err);
+    if (err instanceof SyntaxError) {
+      return response(400, "Invalid JSON request body");
+    }
+
     return response(500, err.message);
   }
 };
@@ -46,12 +43,12 @@ exports.handler = async (event) => {
 const generateAsnFile = async (body) => {
   console.log("Received body:", body);
 
-  // Validate input
-  if (!body || !body.params.sk) {
-    return response(400, "Missing required field: jobUuid");
+  const validationError = validateGenerateAsnRequest(body);
+  if (validationError) {
+    return response(400, validationError);
   }
 
-  const sk = body.params.sk;
+  const jobNumber = body.jobNumber;
 
   try {
     const jobResult = await dynamo
@@ -59,56 +56,45 @@ const generateAsnFile = async (body) => {
         TableName: TABLE_NAME,
         Key: {
           pk: "JOB",
-          sk: sk,
+          sk: jobNumber,
         },
       })
       .promise();
 
     const jobItem = jobResult.Item;
-
-    if (!jobItem) {
-      throw new Error("Job not found");
-    }
-
-    const jobUuid = jobItem.jobUuid;
-    const jobNumber = jobItem.jobNumber;
     const timeStamp = Date.now();
 
-    console.log(`Generating ASN file for jobUuid: ${jobUuid}`);
+    console.log(`Generating ASN file for jobNumber: ${jobNumber}`);
 
-    const wfmJobData = await getJobDetails(jobUuid); // Implement this function to call WFM API and get job details
-    const wfmJobCosts = await getJobCosts(jobUuid); // Implement this function to call WFM API and get job costs
-
-    console.log("Retrieved WFM job data:", wfmJobData);
-
-    const asnFileContent = await generateAsnFileContent(
-      jobItem,
-      wfmJobData,
-      wfmJobCosts,
-    );
+    const asnFileContent = await generateAsnFileContent(body, jobItem);
 
     console.log("Generated ASN file content:", asnFileContent);
 
-    const fileName = `ASN_${jobItem.jobName}_${timeStamp}.xlsx`;
+    const fileNamePart = jobItem?.jobName || jobNumber;
+    const fileName = `ASN_${fileNamePart}_${timeStamp}.xlsx`;
     const fileKey = `asn-files/${fileName}`;
 
     const fileUrl = await uploadAndGetLink(fileKey, asnFileContent);
 
     console.log(`ASN file uploaded to S3: ${fileUrl}`);
 
-    // Store the generated file URL in DynamoDB for reference
-    const consumeData = {
-      ...jobItem,
+    // Store the generated file URL and original request payload for reference.
+    const asnFileData = {
+      ...(jobItem || {}),
       pk: `ASN_FILE`,
       sk: `${jobNumber}#${timeStamp}`,
+      jobNumber,
+      purchasingDoc: body.purchasingDoc,
+      supplier: body.supplier,
       fileName,
       fileKey,
       createdAt: timeStamp,
+      requestPayload: body,
     };
     await dynamo
       .put({
         TableName: TABLE_NAME,
-        Item: consumeData,
+        Item: asnFileData,
       })
       .promise();
 
@@ -119,52 +105,67 @@ const generateAsnFile = async (body) => {
   }
 };
 
-const generateAsnFileContent = async (jobItem, wfmJobData, wfmJobCosts) => {
+const validateGenerateAsnRequest = (body) => {
+  if (!body || typeof body !== "object" || Array.isArray(body)) {
+    return "Missing or invalid request body";
+  }
+
+  const requiredFields = [
+    "jobNumber",
+    "purchasingDoc",
+    "poItem",
+    "supplier",
+    "deliveryQtyUnit",
+    "deliveryDate",
+    "shippingDate",
+    "lines",
+  ];
+
+  for (const field of requiredFields) {
+    if (
+      body[field] === undefined ||
+      body[field] === null ||
+      body[field] === ""
+    ) {
+      return `Missing required field: ${field}`;
+    }
+  }
+
+  if (!Array.isArray(body.lines) || body.lines.length === 0) {
+    return "Missing required field: lines";
+  }
+
+  for (const [index, line] of body.lines.entries()) {
+    if (!line || typeof line !== "object" || Array.isArray(line)) {
+      return `Invalid line at index ${index}`;
+    }
+
+    if (!line.batchNumber) {
+      return `Missing required field: lines[${index}].batchNumber`;
+    }
+
+    if (
+      line.quantity === undefined ||
+      line.quantity === null ||
+      line.quantity === ""
+    ) {
+      return `Missing required field: lines[${index}].quantity`;
+    }
+
+    if (typeof line.quantity !== "number" || line.quantity <= 0) {
+      return `Invalid quantity at index ${index}`;
+    }
+  }
+
+  return null;
+};
+
+const generateAsnFileContent = async (payload, jobItem) => {
   console.log(
-    "Generating ASN file content with jobItem:",
+    "Generating ASN file content with payload:",
+    JSON.stringify(payload),
+    "and jobItem:",
     JSON.stringify(jobItem),
-    "and wfmJobData:",
-    JSON.stringify(wfmJobData),
-    "and wfmJobCosts:",
-    JSON.stringify(wfmJobCosts),
-  );
-
-  // Lookup WFM matching cost quantity to identify the accurate quantity for the ASN file
-  // TODO: improve job savng to capture the quntity at the time of storing the job
-  const initialComponent = jobItem.components[0];
-
-  if (!initialComponent) {
-    throw new Error("No components found in job item");
-  }
-
-  if (!wfmJobCosts || !wfmJobCosts.data) {
-    console.log("No cost data found in WFM response:", wfmJobCosts);
-    throw new Error("No cost data found in WFM response");
-  }
-  const matchingCost = wfmJobCosts.data.find(
-    (cost) => cost.costName === initialComponent.componentDescription,
-  );
-
-  if (!matchingCost) {
-    throw new Error(
-      "Unable to find matching cost item in WFM data for component: " +
-        initialComponent.componentDescription,
-    );
-  }
-
-  const wfmQuantity = matchingCost.quantity || 0;
-
-  if (wfmQuantity === 0) {
-    return (
-      "Matching cost item found in WFM data but quantity is zero for component: " +
-      initialComponent.componentDescription
-    );
-  }
-
-  const jobQuantity = wfmQuantity;
-
-  console.log(
-    `Using quantity ${jobQuantity} from WFM cost data for ASN file generation`,
   );
 
   const ssccPostfixStr = await getSsccPostfix();
@@ -177,47 +178,36 @@ const generateAsnFileContent = async (jobItem, wfmJobData, wfmJobCosts) => {
 
   const { year, month, day } = await getTodayParts();
 
-  const VENDOR_NUMBER = "126757"; // Example vendor number, can be made dynamic if needed
-  const numPallets = Math.floor(jobQuantity / PALLET_QUANTITY);
-  const remainder = jobQuantity % PALLET_QUANTITY;
-
   const defaultRecord = {
     purchasingOrg: "N001",
-    vendor: VENDOR_NUMBER,
+    vendor: payload.supplier,
     plant: "N001",
     companyCode: "N001",
-    sapMaterialCode: jobItem.bomHeader,
-    quantity: PALLET_QUANTITY,
-    vendorMaterialCode: jobItem.bomHeader,
-    materialCodeDescription: jobItem.bomHeaderDescription,
+    sapMaterialCode: payload.sapMaterialCode || jobItem?.bomHeader || "",
+    deliveryQtyUnit: payload.deliveryQtyUnit,
+    vendorMaterialCode: payload.vendorMaterialCode || jobItem?.bomHeader || "",
+    materialCodeDescription:
+      payload.materialCodeDescription || jobItem?.bomHeaderDescription || "",
     shipmentNumber: "",
-    shipmentDate: `${day}.${month}.${year}`,
-    poNumber: wfmJobData.clientOrderNumber || "",
-    batchNumber: "7MA11W",
+    shipmentDate: payload.shippingDate,
+    deliveryDate: payload.deliveryDate,
+    poNumber: payload.purchasingDoc,
+    poItem: payload.poItem,
   };
 
-  const records = [];
-
-  for (let i = 0; i < numPallets; i++) {
-    records.push({
+  const records = payload.lines.map((line, index) => {
+    const record = {
       ...defaultRecord,
-      manualPallet: i + 1,
-      ssccNumber: `${VENDOR_NUMBER}${day}${month}${year}${String(ssccPostfix)}`,
-    });
+      ...line,
+      batchNumber: line.batchNumber,
+      quantity: line.quantity,
+      manualPallet: index + 1,
+      ssccNumber: `${payload.supplier}${day}${month}${year}${String(ssccPostfix)}`,
+    };
 
     ssccPostfix++;
-  }
-
-  if (remainder > 0) {
-    records.push({
-      ...defaultRecord,
-      manualPallet: numPallets + 1,
-      ssccNumber: `${VENDOR_NUMBER}${day}${month}${year}${String(ssccPostfix)}`,
-      quantity: remainder,
-    });
-
-    ssccPostfix++;
-  }
+    return record;
+  });
 
   console.log(`Generated ASN file records: ${JSON.stringify(records)}`);
 
@@ -229,13 +219,16 @@ const generateAsnFileContent = async (jobItem, wfmJobData, wfmJobCosts) => {
       "companyCode",
       "sapMaterialCode",
       "quantity",
+      "deliveryQtyUnit",
       "manualPallet",
       "ssccNumber",
       "vendorMaterialCode",
       "materialCodeDescription",
       "shipmentNumber",
       "shipmentDate",
+      "deliveryDate",
       "poNumber",
+      "poItem",
       "batchNumber",
     ];
 
@@ -249,13 +242,16 @@ const generateAsnFileContent = async (jobItem, wfmJobData, wfmJobCosts) => {
         "Company Code",
         "SAP Material Code",
         "Quantity",
+        "Delivery Quantity Unit",
         "Manual pallet",
         "SSCC Number",
         "Vendor Material Code",
         "Material Code Description",
         "Shipment #",
         "Shipment Date",
+        "Delivery Date",
         "PO Number",
+        "PO Item",
         "Batch Number",
       ],
     ];
