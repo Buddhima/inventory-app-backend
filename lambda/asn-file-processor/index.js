@@ -62,6 +62,14 @@ const generateAsnFile = async (body) => {
       .promise();
 
     const jobItem = jobResult.Item;
+    if (!jobItem) {
+      return response(404, `Job not found: ${jobNumber}`);
+    }
+
+    if (!jobItem.bomHeader) {
+      return response(400, `Job is missing BOM Header: ${jobNumber}`);
+    }
+
     const timeStamp = Date.now();
 
     console.log(`Generating ASN file for jobNumber: ${jobNumber}`);
@@ -114,7 +122,6 @@ const validateGenerateAsnRequest = (body) => {
     "jobNumber",
     "plant",
     "poItem",
-    "material",
     "supplier",
     "deliveryQtyUnit",
     "deliveryNote",
@@ -193,7 +200,7 @@ const generateAsnFileContent = async (payload, jobItem) => {
     plant: payload.plant,
     purchasingDoc: payload.purchasingDoc || "",
     poItem: payload.poItem,
-    material: payload.material,
+    material: jobItem.bomHeader,
     supplier: payload.supplier,
     deliveryQtyUnit: payload.deliveryQtyUnit,
     deliveryNote: payload.deliveryNote || "",
@@ -222,7 +229,7 @@ const generateAsnFileContent = async (payload, jobItem) => {
       plant: line.plant || defaultRecord.plant,
       purchasingDoc: line.purchasingDoc || defaultRecord.purchasingDoc,
       poItem: line.poItem || defaultRecord.poItem,
-      material: line.material || defaultRecord.material,
+      material: defaultRecord.material,
       supplier: line.supplier || defaultRecord.supplier,
       deliveryQty: line.deliveryQty ?? line.quantity,
       deliveryQtyUnit: line.deliveryQtyUnit || defaultRecord.deliveryQtyUnit,

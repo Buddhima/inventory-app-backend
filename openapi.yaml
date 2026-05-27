@@ -248,6 +248,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorMessage"
+        "404":
+          description: Job not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
         "500":
           $ref: "#/components/responses/InternalServerError"
   /asn-file-history:
@@ -583,7 +589,6 @@ components:
         - jobNumber
         - plant
         - poItem
-        - material
         - supplier
         - deliveryQtyUnit
         - deliveryNote
@@ -612,10 +617,6 @@ components:
           type: string
           description: Purchase order line item.
           example: "00010"
-        material:
-          type: string
-          description: Material code.
-          example: YNZ03168
         supplier:
           type: string
           description: Supplier or vendor number.
@@ -699,7 +700,6 @@ components:
         poItem: "00010"
         supplier: "126757"
         plant: FLKA
-        material: YNZ03168
         deliveryQtyUnit: PC
         deliveryNote: production
         deliveryDate: "2026-06-01"
@@ -744,10 +744,6 @@ components:
           type: string
           description: Optional PO item override for this line.
           example: "00010"
-        material:
-          type: string
-          description: Optional material override for this line.
-          example: UNZ05344
         supplier:
           type: string
           description: Optional supplier override for this line.
