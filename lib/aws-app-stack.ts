@@ -56,14 +56,14 @@ export class AwsAppStack extends cdk.Stack {
     const wfmConfigParam = ssm.StringParameter.fromStringParameterName(
       this,
       "WfmConfigParam",
-      `/inventory-app/${stageName}/wfm_token`
+      `/inventory-app/wfm_token`
     );
 
     // SSCC Number postfix
     const ssccPostfixParam = ssm.StringParameter.fromStringParameterName(
       this,
       "SsccPostfixParam",
-      `/inventory-app/${stageName}/sscc_number_postfix`
+      `/inventory-app/sscc_number_postfix`
     );
 
     // Lambda Layer
