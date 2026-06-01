@@ -100,6 +100,8 @@ exports.handler = async (event) => {
 
     console.log(`resulting BOM items: ${JSON.stringify(result)}`);
 
+    await ensureStockItemsForComponents(result);
+
     for (const bomItem of result) {
       await createItem(bomItem);
     }
@@ -108,6 +110,80 @@ exports.handler = async (event) => {
 
     return true;
   }
+};
+
+const ensureStockItemsForComponents = async (bomItems) => {
+  const processedComponentCodes = new Set();
+
+  for (const bomItem of bomItems) {
+    for (const component of bomItem.components || []) {
+      const componentCode = component.componentCode;
+
+      if (!componentCode || processedComponentCodes.has(componentCode)) {
+        continue;
+      }
+
+      processedComponentCodes.add(componentCode);
+      await ensureZeroQuantityStockItem(component);
+    }
+  }
+};
+
+const ensureZeroQuantityStockItem = async (component) => {
+  const componentCode = component.componentCode;
+  const existingRecords = await Promise.all(
+    ["STOCK", "CONSUME"].map((pk) =>
+      dynamo
+        .query({
+          TableName: TABLE_NAME,
+          KeyConditionExpression: "#pk = :pk AND begins_with(#sk, :skPrefix)",
+          ExpressionAttributeNames: {
+            "#pk": "pk",
+            "#sk": "sk",
+          },
+          ExpressionAttributeValues: {
+            ":pk": pk,
+            ":skPrefix": `${componentCode}#`,
+          },
+          Limit: 1,
+        })
+        .promise()
+    )
+  );
+
+  const hasExistingStockOrConsumption = existingRecords.some(
+    (record) => record.Items && record.Items.length > 0
+  );
+
+  if (hasExistingStockOrConsumption) {
+    console.log(
+      `Skipping zero quantity STOCK item for existing component: ${componentCode}`
+    );
+    return;
+  }
+
+  const timeStamp = Date.now();
+  const data = {
+    pk: "STOCK",
+    sk: `${componentCode}#${timeStamp}`,
+    id: componentCode,
+    name: component.componentDescription,
+    componentEAN: component.componentEAN,
+    quantity: 0,
+    source: "JOB_TEMPLATE_UPLOAD",
+    createdAt: timeStamp,
+  };
+
+  console.log(
+    `Creating zero quantity STOCK item for uploaded component: ${componentCode}`
+  );
+
+  await dynamo
+    .put({
+      TableName: TABLE_NAME,
+      Item: data,
+    })
+    .promise();
 };
 
 const createItem = async (item) => {
