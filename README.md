@@ -248,8 +248,10 @@ DEPLOY_ENV=prod npx cdk deploy InventoryApp-prod
 
 The target AWS account expects these SSM parameters to exist:
 
-- `/inventory-app/wfm_token`
-- `/inventory-app/sscc_number_postfix`
+- `/inventory-app/dev/wfm_token`
+- `/inventory-app/dev/sscc_number_postfix`
+- `/inventory-app/prod/wfm_token`
+- `/inventory-app/prod/sscc_number_postfix`
 
 ### Replication checklist
 
@@ -262,7 +264,7 @@ Use this checklist when setting up another environment, especially production:
 - Configure the role trust policy with the matching GitHub Environment name.
 - Add `AWS_ROLE_ARN`, `AWS_REGION`, and `WFM_CONFIG_JSON` to the matching GitHub Environment.
 - For `prod`, enable required reviewers on the GitHub Environment.
-- Create or verify `/inventory-app/wfm_token` and `/inventory-app/sscc_number_postfix` in SSM Parameter Store.
+- Create or verify `/inventory-app/<env>/wfm_token` and `/inventory-app/<env>/sscc_number_postfix` in SSM Parameter Store for the target environment.
 - Rerun the GitHub Actions workflow from `master`.
 - Approve the `prod` deployment when the `dev` deployment has succeeded.
 
@@ -271,5 +273,5 @@ Use this checklist when setting up another environment, especially production:
 - `No OpenIDConnect provider found`: create the IAM OIDC provider in the target AWS account.
 - `Could not assume role with OIDC`: check the role trust policy, `AWS_ROLE_ARN`, repository name, and GitHub Environment name.
 - Missing GitHub secret: confirm the secret exists on the GitHub Environment, not only at repository level.
-- Missing SSM parameter: create `/inventory-app/wfm_token` and `/inventory-app/sscc_number_postfix` in the target AWS account.
+- Missing SSM parameter: create `/inventory-app/<env>/wfm_token` and `/inventory-app/<env>/sscc_number_postfix` in the target AWS account.
 - `DEPLOY_ENV must be set`: run CDK with `DEPLOY_ENV=dev` or `DEPLOY_ENV=prod`.
