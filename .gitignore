@@ -21,3 +21,5 @@ layers/common/nodejs/node_modules
 cdk.out
 
 configs/workflowmax-config.json
+configs/workflowmax-config-dev.json
+configs/workflowmax-config-prod.json
