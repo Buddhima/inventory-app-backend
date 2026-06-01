@@ -19,12 +19,6 @@ class Component {
     this.componentQuantity = Number(componentQuantity);
   }
 
-  // Derived property based on stockQty
-  get isAdditionalCost() {
-    // Example: true if stockQty is 0
-    return this.stockQty === 0;
-  }
-
   static fromRequest(payload) {
     return new Component(payload);
   }

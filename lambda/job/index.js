@@ -34,6 +34,7 @@ const createItem = async (item, performedBy) => {
 
   const jobName = `${job.bomHeader} ${job.bomHeaderDescription}`;
   const components = job.components || [];
+  const inventoryComponentCodes = await getInventoryComponentCodes(components);
   const d = getCurrentDate();
   const appConfig = await getAppConfig();
 
@@ -154,9 +155,12 @@ const createItem = async (item, performedBy) => {
 
   // 4. Create CONSUME items in DynamoDB for cost items
   for (const costItem of components) {
+    const isAdditionalCost = !inventoryComponentCodes.has(costItem.componentCode);
 
-    if(costItem.isAdditionalCost) {
-      console.log(`Skipping CONSUME item creation for additional cost component: ${costItem.componentCode}`);
+    if (isAdditionalCost) {
+      console.log(
+        `Skipping CONSUME item creation for additional cost component: ${costItem.componentCode}`
+      );
       continue;
     }
 
@@ -180,6 +184,51 @@ const createItem = async (item, performedBy) => {
   // 5. Handle and store failed jobs
 
   return response(201, job);
+};
+
+const getInventoryComponentCodes = async (components) => {
+  const componentCodes = [
+    ...new Set(
+      components.map((component) => component.componentCode).filter(Boolean)
+    ),
+  ];
+
+  const inventoryChecks = await Promise.all(
+    componentCodes.map(async (componentCode) => ({
+      componentCode,
+      existsInInventory: await componentExistsInInventory(componentCode),
+    }))
+  );
+
+  return new Set(
+    inventoryChecks
+      .filter((inventoryCheck) => inventoryCheck.existsInInventory)
+      .map((inventoryCheck) => inventoryCheck.componentCode)
+  );
+};
+
+const componentExistsInInventory = async (componentCode) => {
+  const results = await Promise.all(
+    ["STOCK", "CONSUME"].map((pk) =>
+      dynamo
+        .query({
+          TableName: TABLE_NAME,
+          KeyConditionExpression: "#pk = :pk AND begins_with(#sk, :skPrefix)",
+          ExpressionAttributeNames: {
+            "#pk": "pk",
+            "#sk": "sk",
+          },
+          ExpressionAttributeValues: {
+            ":pk": pk,
+            ":skPrefix": `${componentCode}#`,
+          },
+          Limit: 1,
+        })
+        .promise()
+    )
+  );
+
+  return results.some((result) => result.Items && result.Items.length > 0);
 };
 
 const response = (statusCode, body) => ({
