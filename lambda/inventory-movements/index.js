@@ -1,9 +1,15 @@
 const AWS = require("aws-sdk");
-const { getUserName } = require("/opt/nodejs/userContext");
+const {
+  buildLoggedResponse,
+  getUserName,
+  logApiRequest,
+} = require("/opt/nodejs/userContext");
 const dynamo = new AWS.DynamoDB.DocumentClient();
 const TABLE_NAME = process.env.TABLE_NAME;
 
 exports.handler = async (event) => {
+  logApiRequest(event);
+
   const method = event.httpMethod;
 
   try {
@@ -116,12 +122,4 @@ const validationError = (message) => {
   return err;
 };
 
-const response = (statusCode, body) => ({
-  statusCode,
-  headers: {
-    "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Headers": "Content-Type",
-    "Access-Control-Allow-Methods": "OPTIONS,GET,POST,PUT,DELETE",
-  },
-  body: body ? JSON.stringify(body) : "",
-});
+const response = buildLoggedResponse;

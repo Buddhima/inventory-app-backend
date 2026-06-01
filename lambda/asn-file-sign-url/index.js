@@ -1,4 +1,8 @@
 const AWS = require("aws-sdk");
+const {
+  buildLoggedResponse,
+  logApiRequest,
+} = require("/opt/nodejs/userContext");
 const dynamo = new AWS.DynamoDB.DocumentClient();
 const TABLE_NAME = process.env.TABLE_NAME;
 const { S3Client, GetObjectCommand } = require("@aws-sdk/client-s3");
@@ -7,6 +11,8 @@ const { getSignedUrl } = require("@aws-sdk/s3-request-presigner");
 const s3 = new S3Client({});
 
 exports.handler = async (event) => {
+  logApiRequest(event);
+
   const method = event.httpMethod;
   const encodedSk = event.queryStringParameters?.sk;
   const sk = encodedSk ? decodeURIComponent(encodedSk) : null;
@@ -68,12 +74,4 @@ const generateDownloadLink = async (sk) => {
   return response(200, { fileName, fileUrl });
 };
 
-const response = (statusCode, body) => ({
-  statusCode,
-  headers: {
-    "Access-Control-Allow-Origin": "*", // allow your frontend origin here if needed
-    "Access-Control-Allow-Headers": "Content-Type",
-    "Access-Control-Allow-Methods": "OPTIONS,GET,POST,PUT,DELETE",
-  },
-  body: body ? JSON.stringify(body) : "",
-});
+const response = buildLoggedResponse;
