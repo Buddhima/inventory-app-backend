@@ -151,6 +151,16 @@ export class AwsAppStack extends cdk.Stack {
       },
     });
 
+    new cognito.CfnUserPoolGroup(this, "AdminUserGroup", {
+      userPoolId: userPool.userPoolId,
+      groupName: "admin",
+    });
+
+    new cognito.CfnUserPoolGroup(this, "UserGroup", {
+      userPoolId: userPool.userPoolId,
+      groupName: "user",
+    });
+
     const userPoolClient = new cognito.UserPoolClient(this, "UserPoolClient", {
       userPool,
       generateSecret: false,
