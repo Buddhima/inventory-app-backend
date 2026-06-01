@@ -73,6 +73,20 @@ These files are required for proper AWS resource provisioning and WorkflowMax in
 ## 🔐 Authentication
 - User authentication is handled using **AWS Cognito**
 - All application features require authenticated access
+- Cognito users can be assigned to the `admin` or `user` group
+- Users are not automatically assigned to a group; assign them manually after
+  user creation or signup
+
+Assign a user to a Cognito group with the AWS CLI:
+
+```bash
+aws cognito-idp admin-add-user-to-group \
+  --user-pool-id <USER_POOL_ID> \
+  --username <USERNAME_OR_EMAIL> \
+  --group-name user
+```
+
+Use `--group-name admin` to assign administrator access.
 
 ---
 
