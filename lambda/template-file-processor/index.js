@@ -190,13 +190,24 @@ const createItem = async (item) => {
   const timeStamp = Date.now();
   const id = item.bomHeader;
 
-  console.log(`Creating JOB_TEMPLATE item with ID: ${id}, item: ${JSON.stringify(item)}`);
+  console.log(`Creating or updating JOB_TEMPLATE item with ID: ${id}, item: ${JSON.stringify(item)}`);
+
+  const existingItem = await dynamo
+    .get({
+      TableName: TABLE_NAME,
+      Key: {
+        pk: "JOB_TEMPLATE",
+        sk: id,
+      },
+    })
+    .promise();
 
   const data = {
     pk: `JOB_TEMPLATE`,
-    sk: `${id}#${timeStamp}`,
+    sk: id,
     ...item,
-    createdAt: timeStamp,
+    createdAt: existingItem.Item?.createdAt || timeStamp,
+    updatedAt: timeStamp,
   };
   await dynamo
     .put({
@@ -205,7 +216,7 @@ const createItem = async (item) => {
     })
     .promise();
 
-  console.log(`Successfully created JOB_TEMPLATE item with ID: ${id}`);
+  console.log(`Successfully created or updated JOB_TEMPLATE item with ID: ${id}`);
 
   return true;
 };
