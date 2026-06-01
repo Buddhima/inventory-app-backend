@@ -1,9 +1,15 @@
 const AWS = require("aws-sdk");
-const { getUserName } = require("/opt/nodejs/userContext");
+const {
+  buildLoggedResponse,
+  getUserName,
+  logApiRequest,
+} = require("/opt/nodejs/userContext");
 const dynamo = new AWS.DynamoDB.DocumentClient();
 const TABLE_NAME = process.env.TABLE_NAME;
 
 exports.handler = async (event) => {
+  logApiRequest(event);
+
   const method = event.httpMethod;
   const encodedSk = event.queryStringParameters?.sk;
   const sk = encodedSk ? decodeURIComponent(encodedSk) : null;
@@ -57,12 +63,4 @@ const listItems = async () => {
   return response(200, itemMeta);
 };
 
-const response = (statusCode, body) => ({
-  statusCode,
-  headers: {
-    "Access-Control-Allow-Origin": "*", // allow your frontend origin here if needed
-    "Access-Control-Allow-Headers": "Content-Type",
-    "Access-Control-Allow-Methods": "OPTIONS,GET,POST,PUT,DELETE",
-  },
-  body: body ? JSON.stringify(body) : "",
-});
+const response = buildLoggedResponse;

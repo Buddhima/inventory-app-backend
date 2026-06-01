@@ -9,6 +9,44 @@ if (!BASE_URL || !ACCOUNT_ID) {
   throw new Error("WorkflowMax environment variables are missing");
 }
 
+const logWorkflowMaxRequest = ({ method, url, headers, payload }) => {
+  console.log("WorkflowMax request", {
+    method,
+    url,
+    headers,
+    payload,
+  });
+};
+
+const logWorkflowMaxResponse = ({ method, url, status, headers, payload }) => {
+  console.log("WorkflowMax response", {
+    method,
+    url,
+    status,
+    headers,
+    payload,
+  });
+};
+
+const logWorkflowMaxErrorResponse = ({ method, url, error }) => {
+  if (!error.response) {
+    console.error("WorkflowMax request failed before receiving response", {
+      method,
+      url,
+      message: error.message,
+    });
+    return;
+  }
+
+  console.error("WorkflowMax error response", {
+    method,
+    url,
+    status: error.response.status,
+    headers: error.response.headers,
+    payload: error.response.data,
+  });
+};
+
 /**
  * Retrieve WorkflowMax API token from SSM Parameter Store
  */
@@ -25,7 +63,7 @@ const getWfmToken = async () => {
     throw new Error(`App config parameter ${paramName} not found`);
   }
 
-  console.log("Fetched WorkflowMax config parameter", param.Parameter.Value);
+  console.log("Fetched WorkflowMax config parameter");
   const cachedConfig = JSON.parse(param.Parameter.Value);
 
   return cachedConfig.access_token;
@@ -39,12 +77,29 @@ async function postToWorkflowMax(endpoint, data) {
     const API_TOKEN = await getWfmToken();
 
     const url = `${BASE_URL}${endpoint}`;
+    const headers = {
+      "Content-Type": "application/json",
+      "account-id": ACCOUNT_ID,
+      Authorization: `Bearer ${API_TOKEN}`,
+    };
+
+    logWorkflowMaxRequest({
+      method: "POST",
+      url,
+      headers,
+      payload: data,
+    });
+
     const response = await axios.post(url, data, {
-      headers: {
-        "Content-Type": "application/json",
-        "account-id": ACCOUNT_ID,
-        Authorization: `Bearer ${API_TOKEN}`,
-      },
+      headers,
+    });
+
+    logWorkflowMaxResponse({
+      method: "POST",
+      url,
+      status: response.status,
+      headers: response.headers,
+      payload: response.data,
     });
 
     if (response.status < 200 || response.status >= 300) {
@@ -61,6 +116,8 @@ async function postToWorkflowMax(endpoint, data) {
 
     return response.data;
   } catch (err) {
+    const url = `${BASE_URL}${endpoint}`;
+    logWorkflowMaxErrorResponse({ method: "POST", url, error: err });
     console.error(`WorkflowMax API call failed: ${endpoint}`, err.message);
     throw new Error(`WorkflowMax API call failed: ${endpoint}`);
   }
@@ -90,12 +147,28 @@ async function getFromWorkflowMax(endpoint) {
     const API_TOKEN = await getWfmToken();
 
     const url = `${BASE_URL}${endpoint}`;
+    const headers = {
+      "Content-Type": "application/json",
+      "account-id": ACCOUNT_ID,
+      Authorization: `Bearer ${API_TOKEN}`,
+    };
+
+    logWorkflowMaxRequest({
+      method: "GET",
+      url,
+      headers,
+    });
+
     const response = await axios.get(url, {
-      headers: {
-        "Content-Type": "application/json",
-        "account-id": ACCOUNT_ID,
-        Authorization: `Bearer ${API_TOKEN}`,
-      },
+      headers,
+    });
+
+    logWorkflowMaxResponse({
+      method: "GET",
+      url,
+      status: response.status,
+      headers: response.headers,
+      payload: response.data,
     });
 
     if (response.status < 200 || response.status >= 300) {
@@ -112,6 +185,8 @@ async function getFromWorkflowMax(endpoint) {
 
     return response.data;
   } catch (err) {
+    const url = `${BASE_URL}${endpoint}`;
+    logWorkflowMaxErrorResponse({ method: "GET", url, error: err });
     console.error(`WorkflowMax API call failed: ${endpoint}`, err.message);
     throw new Error(`WorkflowMax API call failed: ${endpoint}`);
   }

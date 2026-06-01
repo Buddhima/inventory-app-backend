@@ -91,6 +91,25 @@ These files are required for proper AWS resource provisioning and WorkflowMax in
 - Keep WorkflowMax credentials updated to prevent integration issues
 - The frontend React application consumes APIs exposed by this backend
 
+## Backend Traffic Logs
+
+Backend API request and response payloads are written by each API Gateway Lambda
+handler to Amazon CloudWatch Logs. Open the AWS Console, go to **CloudWatch >
+Log groups**, and check the Lambda log groups for this stack. Lambda log groups
+use the format `/aws/lambda/<lambda-function-name>`.
+
+Useful CloudWatch Logs Insights search strings:
+
+- `Backend API request`
+- `Backend API response`
+- `WorkflowMax request`
+- `WorkflowMax response`
+- `WorkflowMax error response`
+
+WorkflowMax request and response logs are emitted from the job and ASN Lambda
+functions because those are the functions that call WorkflowMax. These logs
+include HTTP headers and payloads.
+
 ## Useful commands
 
 * `npm run build`   compile typescript to js

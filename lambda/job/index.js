@@ -1,5 +1,9 @@
 const AWS = require("aws-sdk");
-const { getUserContext } = require("/opt/nodejs/userContext");
+const {
+  buildLoggedResponse,
+  getUserContext,
+  logApiRequest,
+} = require("/opt/nodejs/userContext");
 const dynamo = new AWS.DynamoDB.DocumentClient();
 const TABLE_NAME = process.env.TABLE_NAME;
 const { createJob, createJobCosts } = require("./services/workflowmaxApi");
@@ -9,6 +13,8 @@ const ssm = new AWS.SSM();
 let cachedConfig;
 
 exports.handler = async (event) => {
+  logApiRequest(event);
+
   const method = event.httpMethod;
   const id = event.pathParameters?.id;
   const body = event.body ? JSON.parse(event.body) : null;
@@ -231,15 +237,7 @@ const componentExistsInInventory = async (componentCode) => {
   return results.some((result) => result.Items && result.Items.length > 0);
 };
 
-const response = (statusCode, body) => ({
-  statusCode,
-  headers: {
-    "Access-Control-Allow-Origin": "*", // allow your frontend origin here if needed
-    "Access-Control-Allow-Headers": "Content-Type",
-    "Access-Control-Allow-Methods": "OPTIONS,GET,POST,PUT,DELETE",
-  },
-  body: body ? JSON.stringify(body) : "",
-});
+const response = buildLoggedResponse;
 
 const getCurrentDate = () => {
   const now = new Date();

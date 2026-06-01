@@ -1,9 +1,15 @@
 const { S3Client, PutObjectCommand } = require("@aws-sdk/client-s3");
 const { getSignedUrl } = require("@aws-sdk/s3-request-presigner");
+const {
+  buildLoggedResponse,
+  logApiRequest,
+} = require("/opt/nodejs/userContext");
 
 const s3 = new S3Client({ region: 'us-east-1' });
 
 exports.handler = async (event) => {
+  logApiRequest(event);
+
   const method = event.httpMethod;
   const body = event.body ? JSON.parse(event.body) : null;
 
@@ -37,12 +43,4 @@ const getUploadUrl = async (data) => {
   return response(200, { uploadUrl: url });
 }
 
-const response = (statusCode, body) => ({
-  statusCode,
-  headers: {
-    "Access-Control-Allow-Origin": "*", // allow your frontend origin here if needed
-    "Access-Control-Allow-Headers": "Content-Type",
-    "Access-Control-Allow-Methods": "OPTIONS,GET,POST,PUT,DELETE",
-  },
-  body: body ? JSON.stringify(body) : "",
-});
+const response = buildLoggedResponse;

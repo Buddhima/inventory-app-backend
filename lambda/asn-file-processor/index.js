@@ -1,5 +1,9 @@
 const AWS = require("aws-sdk");
-const { getUserContext } = require("/opt/nodejs/userContext");
+const {
+  buildLoggedResponse,
+  getUserContext,
+  logApiRequest,
+} = require("/opt/nodejs/userContext");
 const dynamo = new AWS.DynamoDB.DocumentClient();
 const TABLE_NAME = process.env.TABLE_NAME;
 const XLSX = require("xlsx");
@@ -18,6 +22,8 @@ const {
 const s3 = new S3Client({});
 
 exports.handler = async (event) => {
+  logApiRequest(event);
+
   const method = event.httpMethod;
 
   try {
@@ -365,12 +371,4 @@ async function getTodayParts() {
   };
 }
 
-const response = (statusCode, body) => ({
-  statusCode,
-  headers: {
-    "Access-Control-Allow-Origin": "*", // allow your frontend origin here if needed
-    "Access-Control-Allow-Headers": "Content-Type",
-    "Access-Control-Allow-Methods": "OPTIONS,GET,POST,PUT,DELETE",
-  },
-  body: body ? JSON.stringify(body) : "",
-});
+const response = buildLoggedResponse;
