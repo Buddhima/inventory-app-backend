@@ -157,7 +157,7 @@ const ensureZeroQuantityStockItem = async (component) => {
 
   if (hasExistingStockOrConsumption) {
     console.log(
-      `Skipping zero quantity STOCK item for existing component: ${componentCode}`
+      `Skipping the already existing component in the inventory: ${componentCode}`
     );
     return;
   }
