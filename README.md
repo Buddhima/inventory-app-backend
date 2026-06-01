@@ -99,3 +99,59 @@ These files are required for proper AWS resource provisioning and WorkflowMax in
 * `npx cdk deploy`  deploy this stack to your default AWS account/region
 * `npx cdk diff`    compare deployed stack with current state
 * `npx cdk synth`   emits the synthesized CloudFormation template
+
+## Dev and Prod Deployments
+
+The app supports two deployment environments from the `master` branch:
+
+- `dev`
+- `prod`
+
+GitHub Actions deploys `dev` first. The `prod` deployment runs after `dev` succeeds and should be protected with a required approval on the GitHub `prod` environment.
+
+API Gateway uses the matching deployment stage name for each environment: `/dev` for dev and `/prod` for prod.
+
+The API Gateway REST API names are `Inventory App Backend API dev` and `Inventory App Backend API prod`.
+
+Create GitHub Environments named `dev` and `prod`. Add these environment secrets to both:
+
+- `AWS_ROLE_ARN`: IAM role ARN that GitHub Actions can assume in that AWS account.
+- `AWS_REGION`: AWS region to deploy to.
+- `WFM_CONFIG_JSON`: Full JSON content for `configs/workflowmax-config.json`.
+
+The workflow writes `WFM_CONFIG_JSON` to `configs/workflowmax-config.json` during deployment. This file is ignored locally and must not be committed.
+
+The config JSON must include `wfmAccountId`:
+
+```json
+{
+  "clientUUID": "",
+  "priority": "Normal",
+  "statusUUID": "",
+  "customFieldUUIDs": {
+    "bomEAN": "",
+    "signature": "",
+    "supplier": "",
+    "componentCode": "",
+    "componentEAN": ""
+  },
+  "client_id": "",
+  "client_secret": "",
+  "scope": "openid email profile workflowmax offline_access",
+  "wfmAccountId": ""
+}
+```
+
+Deploy manually from a local shell by setting `DEPLOY_ENV`:
+
+```bash
+DEPLOY_ENV=dev npx cdk deploy InventoryApp-dev
+DEPLOY_ENV=prod npx cdk deploy InventoryApp-prod
+```
+
+Each environment also expects these SSM parameters to exist in the target AWS account:
+
+- `/inventory-app/dev/wfm_token`
+- `/inventory-app/dev/sscc_number_postfix`
+- `/inventory-app/prod/wfm_token`
+- `/inventory-app/prod/sscc_number_postfix`

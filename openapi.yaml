@@ -5,7 +5,7 @@ info:
   description: REST API for inventory, job templates, WorkflowMax job creation, uploads, ASN files, and inventory movement history.
 servers:
   - url: https://{apiId}.execute-api.{region}.amazonaws.com/{stage}
-    description: API Gateway deployment
+    description: Inventory App Backend API deployment
     variables:
       apiId:
         default: api-id
@@ -13,6 +13,9 @@ servers:
         default: us-east-1
       stage:
         default: prod
+        enum:
+          - dev
+          - prod
 security:
   - cognitoBearerAuth: []
 tags:

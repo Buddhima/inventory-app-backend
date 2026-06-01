@@ -12,5 +12,6 @@
   },
   "client_id": "",
   "client_secret": "",
-  "scope": "openid email profile workflowmax offline_access"
+  "scope": "openid email profile workflowmax offline_access",
+  "wfmAccountId": ""
 }

@@ -10,9 +10,22 @@ import * as cognito from "aws-cdk-lib/aws-cognito";
 import * as fs from "fs";
 import * as ssm from "aws-cdk-lib/aws-ssm";
 
+export type StageName = "dev" | "prod";
+
+export interface AwsAppStackProps extends cdk.StackProps {
+  stageName: StageName;
+}
+
 export class AwsAppStack extends cdk.Stack {
-  constructor(scope: Construct, id: string, props?: cdk.StackProps) {
+  constructor(scope: Construct, id: string, props: AwsAppStackProps) {
     super(scope, id, props);
+
+    const { stageName } = props;
+    const isProd = stageName === "prod";
+    const removalPolicy = isProd
+      ? cdk.RemovalPolicy.RETAIN
+      : cdk.RemovalPolicy.DESTROY;
+    const autoDeleteObjects = !isProd;
 
     // Reading & adding configs
     const configJson = fs.readFileSync(
@@ -34,7 +47,7 @@ export class AwsAppStack extends cdk.Stack {
       this,
       "AppConfigParameter",
       {
-        parameterName: "/inventory-app/config",
+        parameterName: `/inventory-app/${stageName}/config`,
         stringValue: configJson,
       }
     );
@@ -43,14 +56,14 @@ export class AwsAppStack extends cdk.Stack {
     const wfmConfigParam = ssm.StringParameter.fromStringParameterName(
       this,
       "WfmConfigParam",
-      "/inventory-app/wfm_token"
+      `/inventory-app/${stageName}/wfm_token`
     );
 
     // SSCC Number postfix
     const ssccPostfixParam = ssm.StringParameter.fromStringParameterName(
       this,
       "SsccPostfixParam",
-      "/inventory-app/sscc_number_postfix"
+      `/inventory-app/${stageName}/sscc_number_postfix`
     );
 
     // Lambda Layer
@@ -62,8 +75,8 @@ export class AwsAppStack extends cdk.Stack {
 
     // S3 Buckets
     const uploadBucket = new s3.Bucket(this, "UploadBucket", {
-      removalPolicy: cdk.RemovalPolicy.DESTROY,
-      autoDeleteObjects: true,
+      removalPolicy,
+      autoDeleteObjects,
       cors: [
         {
           allowedOrigins: ["*"],
@@ -79,8 +92,8 @@ export class AwsAppStack extends cdk.Stack {
     });
 
     const templateUploadBucket = new s3.Bucket(this, "TemplateUploadBucket", {
-      removalPolicy: cdk.RemovalPolicy.DESTROY,
-      autoDeleteObjects: true,
+      removalPolicy,
+      autoDeleteObjects,
       cors: [
         {
           allowedOrigins: ["*"],
@@ -96,8 +109,8 @@ export class AwsAppStack extends cdk.Stack {
     });
 
     const asnFileUploadBucket = new s3.Bucket(this, "AsnFileUploadBucket", {
-      removalPolicy: cdk.RemovalPolicy.DESTROY,
-      autoDeleteObjects: true,
+      removalPolicy,
+      autoDeleteObjects,
       cors: [
         {
           allowedOrigins: ["*"],
@@ -123,7 +136,7 @@ export class AwsAppStack extends cdk.Stack {
         type: dynamodb.AttributeType.STRING,
       },
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
-      removalPolicy: cdk.RemovalPolicy.DESTROY,
+      removalPolicy,
     });
 
     // Cognito User Pool
@@ -170,7 +183,7 @@ export class AwsAppStack extends cdk.Stack {
 
     const domain = userPool.addDomain("CognitoDomain", {
       cognitoDomain: {
-        domainPrefix: "ionic-react-auth",
+        domainPrefix: `inventory-app-${stageName}-auth`,
       },
     });
 
@@ -390,8 +403,11 @@ export class AwsAppStack extends cdk.Stack {
     ssccPostfixParam.grantWrite(asnFileHandler);
 
     // API Gateway
-    const api = new apigateway.RestApi(this, "ItemsApi", {
-      restApiName: "Items Service",
+    const api = new apigateway.RestApi(this, "InventoryAppBackendApi", {
+      restApiName: `Inventory App Backend API ${stageName}`,
+      deployOptions: {
+        stageName,
+      },
       defaultCorsPreflightOptions: {
         allowOrigins: apigateway.Cors.ALL_ORIGINS,
         allowMethods: apigateway.Cors.ALL_METHODS,
