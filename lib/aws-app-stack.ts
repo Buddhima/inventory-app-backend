@@ -206,7 +206,7 @@ export class AwsAppStack extends cdk.Stack {
       environment: {
         TABLE_NAME: table.tableName,
       },
-      memorySize: 5120,
+      memorySize: 3008,
       timeout: cdk.Duration.minutes(5),
     });
 
@@ -242,7 +242,7 @@ export class AwsAppStack extends cdk.Stack {
         WFM_ACCOUNT_ID: wfmAccountId,
         WFM_CONFIG_PARAM_NAME: wfmConfigParam.parameterName,
       },
-      memorySize: 5120,
+      memorySize: 3008,
       timeout: cdk.Duration.minutes(5),
     });
 
@@ -278,7 +278,7 @@ export class AwsAppStack extends cdk.Stack {
         environment: {
           TABLE_NAME: table.tableName,
         },
-        memorySize: 5120,
+        memorySize: 3008,
         timeout: cdk.Duration.minutes(5),
       }
     );
@@ -309,7 +309,7 @@ export class AwsAppStack extends cdk.Stack {
         environment: {
           TABLE_NAME: table.tableName,
         },
-        memorySize: 5120,
+        memorySize: 3008,
         timeout: cdk.Duration.minutes(5),
       }
     );
@@ -338,7 +338,7 @@ export class AwsAppStack extends cdk.Stack {
         WFM_CONFIG_PARAM_NAME: wfmConfigParam.parameterName,
         SSCC_POSTFIX_PARAM_NAME: ssccPostfixParam.parameterName,
       },
-      memorySize: 5120,
+      memorySize: 3008,
       timeout: cdk.Duration.minutes(5),
     });
 
