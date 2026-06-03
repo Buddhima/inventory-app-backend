@@ -289,3 +289,4 @@ Use this checklist when setting up another environment, especially production:
 - Missing GitHub secret: confirm the secret exists on the GitHub Environment, not only at repository level.
 - Missing SSM parameter: create `/inventory-app/<env>/wfm_token` and `/inventory-app/<env>/sscc_number_postfix` in the target AWS account.
 - `DEPLOY_ENV must be set`: run CDK with `DEPLOY_ENV=dev` or `DEPLOY_ENV=prod`.
+
